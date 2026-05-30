@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Emoji Tasks</title>
+
+<link rel="stylesheet" href="style.css">
+
+<link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+
+<body>
+
+<div class="container">
+
+    <header>
+
+        <h1>😀 Emoji Tasks</h1>
+
+        <p class="subtitle">
+            Complete tasks, earn XP and level up.
+        </p>
+
+    </header>
+
+    <section class="profile-card">
+
+<div class="level-info">
+
+    <h2>🏆 Level <span id="level">1</span></h2>
+
+    <p>
+        XP:
+        <span id="xp">0</span>
+        /
+        <span id="maxXp">100</span>
+    </p>
+
+    <p>
+        🔥 Streak:
+        <span id="streak">0</span>
+        days
+    </p>
+
+</div>
+
+        <div class="progress-container">
+            <div id="progressBar" class="progress-bar"></div>
+        </div>
+
+    </section>
+
+    <section class="task-form">
+
+        <input
+            type="text"
+            id="taskInput"
+            placeholder="😀 Enter a task..."
+        >
+
+        <button id="addTaskBtn">
+            Add Task
+        </button>
+
+    </section>
+
+    <section class="stats">
+
+        <div class="stat-card">
+            <h3 id="totalTasks">0</h3>
+            <span>Total</span>
+        </div>
+
+        <div class="stat-card">
+            <h3 id="completedTasks">0</h3>
+            <span>Completed</span>
+        </div>
+
+        <div class="stat-card">
+            <h3 id="activeTasks">0</h3>
+            <span>Active</span>
+        </div>
+
+    </section>
+
+    <section class="chart-section">
+
+        <h2>📈 Progress</h2>
+
+        <canvas id="progressChart"></canvas>
+
+    </section>
+
+    <section class="tasks-section">
+
+        <h2>Your Tasks</h2>
+
+        <ul id="taskList"></ul>
+
+    </section>
+
+</div>
+
+<section class="achievements">
+    <h2>🏅 Achievements</h2>
+
+    <div id="achievementsList" class="achievement-list">
+
+        <div class="achievement locked" id="firstTask">
+            🎯 First Task
+        </div>
+
+        <div class="achievement locked" id="tenTasks">
+            🚀 Complete 10 Tasks
+        </div>
+
+        <div class="achievement locked" id="levelFive">
+            👑 Reach Level 5
+        </div>
+
+    </div>
+</section>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="script.js"></script>
+
+<div id="toast"></div>
+
+</body>
+</html>
