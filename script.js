@@ -39,9 +39,21 @@ let streak = loadNumber(STORAGE_KEYS.streak);
 let chart = null;
 let toastTimer = null;
 
+function createId() {
+    if (typeof crypto?.randomUUID === "function") {
+        return crypto.randomUUID();
+    }
+
+    return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
 function loadNumber(key, fallback = 0) {
-    const value = Number(localStorage.getItem(key));
-    return Number.isFinite(value) && value >= 0 ? value : fallback;
+    try {
+        const value = Number(localStorage.getItem(key));
+        return Number.isFinite(value) && value >= 0 ? value : fallback;
+    } catch {
+        return fallback;
+    }
 }
 
 function loadTasks() {
@@ -53,7 +65,7 @@ function loadTasks() {
         return stored
             .filter((task) => task && typeof task === "object")
             .map((task) => ({
-                id: String(task.id ?? crypto.randomUUID()),
+                id: String(task.id ?? createId()),
                 text: typeof task.text === "string" ? task.text.slice(0, MAX_TASK_LENGTH) : "",
                 emoji: typeof task.emoji === "string" ? task.emoji : "📝",
                 completed: Boolean(task.completed)
@@ -65,10 +77,14 @@ function loadTasks() {
 }
 
 function saveData() {
-    localStorage.setItem(STORAGE_KEYS.tasks, JSON.stringify(tasks));
-    localStorage.setItem(STORAGE_KEYS.xp, String(xp));
-    localStorage.setItem(STORAGE_KEYS.level, String(level));
-    localStorage.setItem(STORAGE_KEYS.streak, String(streak));
+    try {
+        localStorage.setItem(STORAGE_KEYS.tasks, JSON.stringify(tasks));
+        localStorage.setItem(STORAGE_KEYS.xp, String(xp));
+        localStorage.setItem(STORAGE_KEYS.level, String(level));
+        localStorage.setItem(STORAGE_KEYS.streak, String(streak));
+    } catch {
+        showToast("⚠️ Browser storage is unavailable.");
+    }
 }
 
 function showToast(message) {
@@ -104,15 +120,15 @@ function updateStreak() {
     }
 
     const difference = getDayDifference(lastDate, today);
+    streak = difference === 1 ? streak + 1 : 1;
 
-    if (difference === 1) {
-        streak += 1;
-    } else {
-        streak = 1;
+    try {
+        localStorage.setItem(STORAGE_KEYS.lastTaskDate, today);
+        localStorage.setItem(STORAGE_KEYS.streak, String(streak));
+    } catch {
+        // The current streak remains available in memory for this session.
     }
 
-    localStorage.setItem(STORAGE_KEYS.lastTaskDate, today);
-    localStorage.setItem(STORAGE_KEYS.streak, String(streak));
     streakEl.textContent = streak;
 }
 
@@ -267,7 +283,7 @@ function addTask() {
     }
 
     tasks.unshift({
-        id: crypto.randomUUID(),
+        id: createId(),
         text,
         emoji: taskEmoji.value,
         completed: false
@@ -289,7 +305,6 @@ function toggleTask(id) {
         updateStreak();
         showToast("🎉 Task completed +10 XP");
     } else {
-        xp = Math.max(0, xp - XP_REWARD);
         showToast("↩ Task marked active");
     }
 
