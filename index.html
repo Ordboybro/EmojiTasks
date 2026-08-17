@@ -1,135 +1,103 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="EmojiTasks is a gamified task manager with XP, levels, streaks, achievements and local browser storage.">
+    <meta name="theme-color" content="#0f1117">
 
-<title>Emoji Tasks</title>
+    <title>EmojiTasks • Gamified Task Manager</title>
 
-<link rel="stylesheet" href="style.css">
-
-<link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
-
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 </head>
 
 <body>
+    <main class="container">
+        <header class="hero">
+            <div class="logo" aria-hidden="true">😀</div>
+            <h1>Emoji Tasks</h1>
+            <p class="subtitle">Turn your tasks into a small game. Complete goals, earn XP and level up.</p>
+        </header>
 
-<div class="container">
+        <section class="profile-card" aria-labelledby="profileTitle">
+            <div class="level-info">
+                <div>
+                    <h2 id="profileTitle">🏆 Level <span id="level">1</span></h2>
+                    <p>XP: <span id="xp">0</span> / <span id="maxXp">100</span></p>
+                </div>
+                <p class="streak">🔥 Streak: <span id="streak">0</span> days</p>
+            </div>
 
-    <header>
+            <div class="progress-container" role="progressbar" aria-label="Experience progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+                <div id="progressBar" class="progress-bar"></div>
+            </div>
+        </section>
 
-        <h1>😀 Emoji Tasks</h1>
+        <section class="task-form" aria-label="Add task">
+            <label class="sr-only" for="taskEmoji">Task emoji</label>
+            <select id="taskEmoji" aria-label="Task emoji">
+                <option value="📝">📝</option>
+                <option value="💻">💻</option>
+                <option value="📚">📚</option>
+                <option value="🏃">🏃</option>
+                <option value="🎮">🎮</option>
+                <option value="💡">💡</option>
+                <option value="🔥">🔥</option>
+                <option value="🎯">🎯</option>
+            </select>
 
-        <p class="subtitle">
-            Complete tasks, earn XP and level up.
-        </p>
+            <label class="sr-only" for="taskInput">Task name</label>
+            <input type="text" id="taskInput" maxlength="200" autocomplete="off" placeholder="What needs to be done?">
+            <button id="addTaskBtn" type="button">➕ Add Task</button>
+        </section>
 
-    </header>
+        <section class="stats" aria-label="Task statistics">
+            <div class="stat-card"><span class="stat-icon">📋</span><h3 id="totalTasks">0</h3><span>Total</span></div>
+            <div class="stat-card"><span class="stat-icon">✅</span><h3 id="completedTasks">0</h3><span>Completed</span></div>
+            <div class="stat-card"><span class="stat-icon">⏳</span><h3 id="activeTasks">0</h3><span>Active</span></div>
+        </section>
 
-    <section class="profile-card">
+        <section class="chart-section" aria-labelledby="progressTitle">
+            <h2 id="progressTitle">📈 Progress</h2>
+            <div class="chart-wrap">
+                <canvas id="progressChart" aria-label="Completed versus active tasks"></canvas>
+                <p id="chartFallback" class="empty-state" hidden>Progress chart is unavailable.</p>
+            </div>
+        </section>
 
-<div class="level-info">
+        <section class="tasks-section" aria-labelledby="tasksTitle">
+            <div class="section-heading">
+                <div>
+                    <h2 id="tasksTitle">Your Tasks</h2>
+                    <p id="taskSummary" class="section-note">No tasks yet.</p>
+                </div>
+                <button id="clearCompletedBtn" class="secondary-btn" type="button">Clear completed</button>
+            </div>
 
-    <h2>🏆 Level <span id="level">1</span></h2>
+            <ul id="taskList" aria-live="polite"></ul>
+            <p id="emptyTasks" class="empty-state">Add your first task above 🚀</p>
+        </section>
 
-    <p>
-        XP:
-        <span id="xp">0</span>
-        /
-        <span id="maxXp">100</span>
-    </p>
+        <section class="achievements" aria-labelledby="achievementsTitle">
+            <h2 id="achievementsTitle">🏅 Achievements</h2>
+            <div id="achievementsList" class="achievement-list">
+                <div class="achievement locked" id="firstTask">🎯 First Task</div>
+                <div class="achievement locked" id="tenTasks">🚀 Complete 10 Tasks</div>
+                <div class="achievement locked" id="levelFive">👑 Reach Level 5</div>
+            </div>
+        </section>
 
-    <p>
-        🔥 Streak:
-        <span id="streak">0</span>
-        days
-    </p>
+        <footer>
+            <p>Made with ❤️ by ORDBOY</p>
+        </footer>
+    </main>
 
-</div>
+    <div id="toast" role="status" aria-live="polite"></div>
 
-        <div class="progress-container">
-            <div id="progressBar" class="progress-bar"></div>
-        </div>
-
-    </section>
-
-    <section class="task-form">
-
-        <input
-            type="text"
-            id="taskInput"
-            placeholder="😀 Enter a task..."
-        >
-
-        <button id="addTaskBtn">
-            Add Task
-        </button>
-
-    </section>
-
-    <section class="stats">
-
-        <div class="stat-card">
-            <h3 id="totalTasks">0</h3>
-            <span>Total</span>
-        </div>
-
-        <div class="stat-card">
-            <h3 id="completedTasks">0</h3>
-            <span>Completed</span>
-        </div>
-
-        <div class="stat-card">
-            <h3 id="activeTasks">0</h3>
-            <span>Active</span>
-        </div>
-
-    </section>
-
-    <section class="chart-section">
-
-        <h2>📈 Progress</h2>
-
-        <canvas id="progressChart"></canvas>
-
-    </section>
-
-    <section class="tasks-section">
-
-        <h2>Your Tasks</h2>
-
-        <ul id="taskList"></ul>
-
-    </section>
-
-</div>
-
-<section class="achievements">
-    <h2>🏅 Achievements</h2>
-
-    <div id="achievementsList" class="achievement-list">
-
-        <div class="achievement locked" id="firstTask">
-            🎯 First Task
-        </div>
-
-        <div class="achievement locked" id="tenTasks">
-            🚀 Complete 10 Tasks
-        </div>
-
-        <div class="achievement locked" id="levelFive">
-            👑 Reach Level 5
-        </div>
-
-    </div>
-</section>
-
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script src="script.js"></script>
-
-<div id="toast"></div>
-
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="script.js"></script>
 </body>
 </html>
