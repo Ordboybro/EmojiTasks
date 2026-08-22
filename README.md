@@ -1,83 +1,140 @@
 # 😀 EmojiTasks
 
-> A gamified task manager that turns everyday tasks into XP, levels, streaks and achievements.
+> A privacy-first gamified task manager: tasks → XP → levels → streaks → achievements.
 
 **Live demo:** https://ordboybro.github.io/EmojiTasks/
 
-EmojiTasks is a client-side task manager built with vanilla JavaScript. Your tasks and game progress are stored locally in the browser, so the application works without a backend or account.
+EmojiTasks is a static, client-side productivity app built with vanilla JavaScript. It turns a normal task list into a lightweight game while keeping the application's data in the browser.
 
-## ✨ Features
+## ✨ v2.0 highlights
 
-- ➕ Add, complete, restore and delete tasks
-- 😎 Choose an emoji for every task
-- 🎮 XP reward system — completed tasks give `+10 XP`
-- 🏆 Level progression — every `100 XP` advances the level
-- 🔥 Daily streak tracking
-- 📊 Total, completed and active task statistics
-- 📈 Completed vs active task chart
-- 🏅 Achievement system
-- 🧹 Clear all completed tasks
-- 💾 Local browser persistence with `localStorage`
-- 📱 Responsive desktop and mobile layout
-- ♿ Keyboard-friendly controls and accessible labels
-- 🛡️ Task text is rendered safely without injecting HTML
-- 🧩 Graceful chart fallback when the Chart.js CDN is unavailable
+- 🎮 XP and level progression
+- 🔥 Daily streak system
+- 🏅 **6 permanent achievements**
+- 📋 Add, complete, restore, edit and delete tasks
+- 😀 12 task emoji options
+- 🚦 Low / medium / high priorities
+- 📅 Optional deadlines with overdue detection
+- 🔎 Live task search
+- 🎚️ All / active / completed / high-priority filters
+- ↕️ Newest / priority / deadline / A–Z sorting
+- 📊 Live progress chart built with native Canvas — **no Chart.js/CDN dependency**
+- 📈 Total / completed / active / overdue statistics
+- 🧹 Clear completed tasks
+- 💾 Versioned `localStorage` state with migration from the previous EmojiTasks format
+- 🛡️ Safe DOM rendering with `textContent`
+- 📱 Responsive mobile, tablet and desktop UI
+- ♿ Keyboard focus states and reduced-motion support
+- 🌐 No external runtime dependencies
 
-## 🎮 How the game system works
+## 🎮 Game system
 
-### XP
+### XP & levels
 
-Every time an active task is completed:
+Completing an active task gives:
 
 ```text
 +10 XP
 ```
 
-When the current XP reaches `100`, the player levels up and the XP progress starts again from zero.
+Every `100 XP` advances the player by one level. XP progress resets after a level-up.
 
-### Streak
+Undoing a completed task changes the task back to active, but **does not remove XP already earned**. This prevents repeatedly completing and undoing tasks from manipulating the progression system and keeps earned XP meaningful.
 
-Complete at least one task on consecutive days to continue the streak. Completing multiple tasks on the same day does not increase it multiple times. If a day is missed, the next completed task starts a new streak.
+### Streaks
+
+The streak counts days on which you complete at least one task:
+
+- Complete a task today → start/continue the streak.
+- Complete more tasks today → the streak does not increase again.
+- Miss a calendar day → the next completion starts a new streak.
 
 ### Achievements
+
+Achievements use lifetime counters, so deleting completed tasks does not remove previously earned milestones.
 
 | Achievement | Requirement |
 | --- | --- |
 | 🎯 First Task | Complete 1 task |
-| 🚀 Complete 10 Tasks | Complete 10 tasks |
-| 👑 Reach Level 5 | Reach level 5 |
+| 🚀 10 Tasks | Complete 10 tasks |
+| 👑 Level 5 | Reach level 5 |
+| 🔥 25 Tasks | Complete 25 tasks |
+| 💯 100 XP | Earn 100 lifetime XP |
+| ⚡ Perfect Day | Complete 5 tasks in one day |
 
-## 🛡️ Data & Privacy
+## 📋 Task management
 
-EmojiTasks is a client-side application.
+Every task can contain:
 
-- Tasks are stored in the browser using `localStorage`.
-- XP, level and streak data are also stored locally.
-- No application backend is used.
-- No account or registration is required.
-- Task text is inserted into the DOM with `textContent`, rather than interpreted as HTML.
+- Emoji
+- Name (up to 200 characters)
+- Priority
+- Optional deadline
+- Completion state
 
-Clearing the site's browser storage will remove the saved application data.
+Tasks can be searched, filtered, sorted, edited, completed/restored and deleted.
 
-> **Note:** Chart.js is loaded from jsDelivr for the progress chart. If the CDN is unavailable, the rest of the application remains usable and the chart shows a fallback message.
+Overdue tasks are detected automatically when their deadline is before the current local date.
+
+## 📊 Progress
+
+The progress card uses the browser's native **Canvas API** to draw the completed/active task chart. This means the application no longer depends on Chart.js, jsDelivr, or any other third-party runtime resource.
+
+The percentage in the center is calculated as:
+
+```text
+completed tasks / total tasks × 100
+```
+
+## 🛡️ Privacy & data
+
+EmojiTasks has **no backend and no account system**.
+
+The following data is stored locally in the browser:
+
+- Tasks
+- XP and level
+- Current streak
+- Lifetime completed-task counter
+- Lifetime XP
+- Completion-day counters used for achievements
+
+No task data is sent to a server by the application.
+
+Task names are inserted into the page using DOM APIs and `textContent`, not `innerHTML`, so a task containing HTML-like text is treated as plain text.
+
+> Clearing the site's browser storage removes local EmojiTasks data. There is no server-side copy to restore it from.
+
+## 🔄 Data migration
+
+v2 stores all application state under:
+
+```text
+emojiTasks.state.v2
+```
+
+When v2 does not find that state, it attempts to migrate the previous keys (`emojiTasks`, `emojiXP`, `emojiLevel`, `emojiStreak`, `lastTaskDate`). This allows an existing browser installation to move to v2 without manually exporting its data.
 
 ## 🛠️ Tech Stack
 
 - HTML5
 - CSS3
 - Vanilla JavaScript
-- Browser `localStorage` API
-- Chart.js
+- Canvas API
+- `localStorage`
+- Web Crypto API when available for task IDs
 
-## 📂 Project Structure
+**No frameworks. No npm. No build step. No backend. No CDN dependency.**
+
+## 📂 Project structure
 
 ```text
 EmojiTasks/
 ├── index.html
 ├── style.css
 ├── script.js
-├── .gitignore
-└── README.md
+├── README.md
+└── .gitignore
 ```
 
 ## 🚀 Run locally
@@ -89,7 +146,7 @@ git clone https://github.com/Ordboybro/EmojiTasks.git
 cd EmojiTasks
 ```
 
-For the most reliable browser behavior, start a local HTTP server:
+You can open `index.html` directly, but a local HTTP server is recommended:
 
 ```bash
 python -m http.server 8000
@@ -103,28 +160,46 @@ http://localhost:8000
 
 ## 🌐 GitHub Pages
 
-EmojiTasks is a static web application and can be deployed with GitHub Pages.
+EmojiTasks is a static site and works with GitHub Pages.
+
+Typical setup:
 
 ```text
-Settings → Pages → Deploy from a branch → main → / (root)
+Repository → Settings → Pages → Deploy from a branch → main → / (root)
 ```
 
 Live demo:
 
 https://ordboybro.github.io/EmojiTasks/
 
-## 📱 Responsive Design
+## 🔐 Security-minded implementation details
 
-The interface adapts to desktop, tablet and mobile screen sizes.
+- User task text is rendered with `textContent`.
+- Task IDs prefer `crypto.randomUUID()` / `crypto.getRandomValues()`.
+- No task text is logged or transmitted.
+- There is no remote database.
+- There is no third-party analytics code.
+- The app gracefully handles unavailable browser storage.
+- The state format is normalized when loaded to tolerate malformed/old values.
 
-## 📈 Project Status
+## 📱 Browser support
 
-**Portfolio project — actively improved as part of my programming learning journey.**
+EmojiTasks targets modern browsers with support for:
 
-The current version focuses on clean client-side JavaScript, browser storage, safe DOM manipulation, responsive UI and practical application architecture.
+- ES2020+ JavaScript
+- Canvas 2D
+- `localStorage`
+- CSS `backdrop-filter` for the full visual effect (optional)
+
+## 📈 Project status
+
+**Portfolio project — v2.0**
+
+EmojiTasks is being developed as a practical frontend project with an emphasis on clean JavaScript, state management, browser APIs, safe DOM manipulation, responsive UI and useful product features.
 
 ## 👨‍💻 Author
 
 **ORDBOY**
 
-GitHub: https://github.com/Ordboybro
+- GitHub: https://github.com/Ordboybro
+- Repository: https://github.com/Ordboybro/EmojiTasks
