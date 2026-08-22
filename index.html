@@ -3,101 +3,144 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="EmojiTasks is a gamified task manager with XP, levels, streaks, achievements and local browser storage.">
-    <meta name="theme-color" content="#0f1117">
-
+    <meta name="description" content="EmojiTasks is a privacy-first gamified task manager with XP, levels, streaks, achievements, priorities, deadlines and local storage.">
+    <meta name="theme-color" content="#0b0e14">
+    <meta name="color-scheme" content="dark">
     <title>EmojiTasks • Gamified Task Manager</title>
-
     <link rel="stylesheet" href="style.css">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 </head>
 
 <body>
-    <main class="container">
-        <header class="hero">
-            <div class="logo" aria-hidden="true">😀</div>
-            <h1>Emoji Tasks</h1>
-            <p class="subtitle">Turn your tasks into a small game. Complete goals, earn XP and level up.</p>
-        </header>
+<main class="container">
+    <header class="hero">
+        <div class="logo" aria-hidden="true">😀</div>
+        <div class="version-badge">EmojiTasks · v2.0</div>
+        <h1>Emoji Tasks</h1>
+        <p class="subtitle">Turn everyday work into a small game. Complete goals, earn XP, protect your streak and level up.</p>
+    </header>
 
-        <section class="profile-card" aria-labelledby="profileTitle">
-            <div class="level-info">
-                <div>
-                    <h2 id="profileTitle">🏆 Level <span id="level">1</span></h2>
-                    <p>XP: <span id="xp">0</span> / <span id="maxXp">100</span></p>
-                </div>
-                <p class="streak">🔥 Streak: <span id="streak">0</span> days</p>
+    <section class="profile-card" aria-labelledby="profileTitle">
+        <div class="level-info">
+            <div>
+                <h2 id="profileTitle">🏆 Level <span id="level">1</span></h2>
+                <p><span id="xp">0</span> / <span id="maxXp">100</span> XP to next level</p>
             </div>
-
-            <div class="progress-container" role="progressbar" aria-label="Experience progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
-                <div id="progressBar" class="progress-bar"></div>
+            <div class="profile-stats">
+                <span>🔥 <b id="streak">0</b> day streak</span>
+                <span>⭐ <b id="lifetimeCompleted">0</b> completed</span>
             </div>
-        </section>
+        </div>
+        <div class="progress-container" role="progressbar" aria-label="Experience progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+            <div id="progressBar" class="progress-bar"></div>
+        </div>
+    </section>
 
-        <section class="task-form" aria-label="Add task">
-            <label class="sr-only" for="taskEmoji">Task emoji</label>
-            <select id="taskEmoji" aria-label="Task emoji">
-                <option value="📝">📝</option>
-                <option value="💻">💻</option>
-                <option value="📚">📚</option>
-                <option value="🏃">🏃</option>
-                <option value="🎮">🎮</option>
-                <option value="💡">💡</option>
-                <option value="🔥">🔥</option>
-                <option value="🎯">🎯</option>
+    <section class="task-form" aria-labelledby="addTaskTitle">
+        <h2 id="addTaskTitle" class="sr-only">Add task</h2>
+        <label class="sr-only" for="taskEmoji">Task emoji</label>
+        <select id="taskEmoji" aria-label="Task emoji">
+            <option value="📝">📝</option><option value="💻">💻</option><option value="📚">📚</option>
+            <option value="🏃">🏃</option><option value="🎮">🎮</option><option value="💡">💡</option>
+            <option value="🔥">🔥</option><option value="🎯">🎯</option><option value="🧠">🧠</option>
+            <option value="🏋️">🏋️</option><option value="🎨">🎨</option><option value="🛠️">🛠️</option>
+        </select>
+        <label class="sr-only" for="taskInput">Task name</label>
+        <input type="text" id="taskInput" maxlength="200" autocomplete="off" placeholder="What needs to be done?">
+        <label class="sr-only" for="taskPriority">Task priority</label>
+        <select id="taskPriority" aria-label="Task priority">
+            <option value="low">🟢 Low</option>
+            <option value="medium" selected>🟡 Medium</option>
+            <option value="high">🔴 High</option>
+        </select>
+        <label class="sr-only" for="taskDueDate">Task deadline</label>
+        <input type="date" id="taskDueDate" aria-label="Task deadline">
+        <button id="addTaskBtn" type="button">➕ Add Task</button>
+    </section>
+
+    <section class="toolbar" aria-label="Task filters and search">
+        <label class="search-box" for="taskSearch">
+            <span aria-hidden="true">🔎</span>
+            <input id="taskSearch" type="search" maxlength="80" placeholder="Search tasks..." autocomplete="off">
+        </label>
+        <div class="filters" role="group" aria-label="Task filters">
+            <button class="filter-btn active" type="button" data-filter="all">All</button>
+            <button class="filter-btn" type="button" data-filter="active">Active</button>
+            <button class="filter-btn" type="button" data-filter="completed">Done</button>
+            <button class="filter-btn" type="button" data-filter="high">🔴 High</button>
+        </div>
+        <label class="sort-box" for="taskSort">Sort
+            <select id="taskSort">
+                <option value="created">Newest</option>
+                <option value="priority">Priority</option>
+                <option value="deadline">Deadline</option>
+                <option value="alphabetical">A–Z</option>
             </select>
+        </label>
+    </section>
 
-            <label class="sr-only" for="taskInput">Task name</label>
-            <input type="text" id="taskInput" maxlength="200" autocomplete="off" placeholder="What needs to be done?">
-            <button id="addTaskBtn" type="button">➕ Add Task</button>
-        </section>
+    <section class="stats" aria-label="Task statistics">
+        <div class="stat-card"><span class="stat-icon">📋</span><h3 id="totalTasks">0</h3><span>Total</span></div>
+        <div class="stat-card"><span class="stat-icon">✅</span><h3 id="completedTasks">0</h3><span>Completed</span></div>
+        <div class="stat-card"><span class="stat-icon">⏳</span><h3 id="activeTasks">0</h3><span>Active</span></div>
+        <div class="stat-card"><span class="stat-icon">⚠️</span><h3 id="overdueTasks">0</h3><span>Overdue</span></div>
+    </section>
 
-        <section class="stats" aria-label="Task statistics">
-            <div class="stat-card"><span class="stat-icon">📋</span><h3 id="totalTasks">0</h3><span>Total</span></div>
-            <div class="stat-card"><span class="stat-icon">✅</span><h3 id="completedTasks">0</h3><span>Completed</span></div>
-            <div class="stat-card"><span class="stat-icon">⏳</span><h3 id="activeTasks">0</h3><span>Active</span></div>
-        </section>
-
-        <section class="chart-section" aria-labelledby="progressTitle">
-            <h2 id="progressTitle">📈 Progress</h2>
-            <div class="chart-wrap">
-                <canvas id="progressChart" aria-label="Completed versus active tasks"></canvas>
-                <p id="chartFallback" class="empty-state" hidden>Progress chart is unavailable.</p>
+    <section class="chart-section" aria-labelledby="progressTitle">
+        <div class="section-heading">
+            <div>
+                <h2 id="progressTitle">📈 Progress</h2>
+                <p class="section-note">A live view of your current task balance.</p>
             </div>
-        </section>
+        </div>
+        <div class="chart-wrap">
+            <canvas id="progressChart" aria-label="Completed versus active tasks" role="img"></canvas>
+            <div id="chartCenter" class="chart-center"><strong id="chartPercent">0%</strong><span>done</span></div>
+        </div>
+    </section>
 
-        <section class="tasks-section" aria-labelledby="tasksTitle">
-            <div class="section-heading">
-                <div>
-                    <h2 id="tasksTitle">Your Tasks</h2>
-                    <p id="taskSummary" class="section-note">No tasks yet.</p>
-                </div>
-                <button id="clearCompletedBtn" class="secondary-btn" type="button">Clear completed</button>
+    <section class="tasks-section" aria-labelledby="tasksTitle">
+        <div class="section-heading">
+            <div>
+                <h2 id="tasksTitle">Your Tasks</h2>
+                <p id="taskSummary" class="section-note">No tasks yet.</p>
             </div>
+            <button id="clearCompletedBtn" class="secondary-btn" type="button">🧹 Clear completed</button>
+        </div>
+        <ul id="taskList" aria-live="polite"></ul>
+        <p id="emptyTasks" class="empty-state">Add your first task above 🚀</p>
+        <p id="noResults" class="empty-state" hidden>No tasks match your current filters.</p>
+    </section>
 
-            <ul id="taskList" aria-live="polite"></ul>
-            <p id="emptyTasks" class="empty-state">Add your first task above 🚀</p>
-        </section>
-
-        <section class="achievements" aria-labelledby="achievementsTitle">
-            <h2 id="achievementsTitle">🏅 Achievements</h2>
-            <div id="achievementsList" class="achievement-list">
-                <div class="achievement locked" id="firstTask">🎯 First Task</div>
-                <div class="achievement locked" id="tenTasks">🚀 Complete 10 Tasks</div>
-                <div class="achievement locked" id="levelFive">👑 Reach Level 5</div>
+    <section class="achievements" aria-labelledby="achievementsTitle">
+        <div class="section-heading">
+            <div>
+                <h2 id="achievementsTitle">🏅 Achievements</h2>
+                <p class="section-note">Permanent milestones based on your lifetime progress.</p>
             </div>
-        </section>
+        </div>
+        <div id="achievementsList" class="achievement-list">
+            <div class="achievement locked" id="firstTask"><span>🎯</span><b>First Task</b><small>Complete 1 task</small></div>
+            <div class="achievement locked" id="tenTasks"><span>🚀</span><b>10 Tasks</b><small>Complete 10 tasks</small></div>
+            <div class="achievement locked" id="levelFive"><span>👑</span><b>Level 5</b><small>Reach level 5</small></div>
+            <div class="achievement locked" id="twentyFive"><span>🔥</span><b>25 Tasks</b><small>Complete 25 tasks</small></div>
+            <div class="achievement locked" id="hundredXp"><span>💯</span><b>100 XP</b><small>Earn 100 lifetime XP</small></div>
+            <div class="achievement locked" id="perfectDay"><span>⚡</span><b>Perfect Day</b><small>Complete 5 tasks in one day</small></div>
+        </div>
+    </section>
 
-        <footer>
-            <p>Made with ❤️ by ORDBOY</p>
-        </footer>
-    </main>
+    <section class="privacy-note" aria-label="Privacy information">
+        <span aria-hidden="true">🛡️</span>
+        <div><strong>Private by design</strong><p>Tasks and progress stay in this browser. EmojiTasks has no backend, account system or analytics. Clearing site data resets your local progress.</p></div>
+    </section>
 
-    <div id="toast" role="status" aria-live="polite"></div>
+    <footer>
+        <p>Made with ❤️ by <a href="https://github.com/Ordboybro" target="_blank" rel="noopener noreferrer">ORDBOY</a></p>
+        <span>•</span>
+        <a href="https://github.com/Ordboybro/EmojiTasks" target="_blank" rel="noopener noreferrer">GitHub</a>
+    </footer>
+</main>
 
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="script.js"></script>
+<div id="toast" role="status" aria-live="polite"></div>
+<script src="script.js" defer></script>
 </body>
 </html>
