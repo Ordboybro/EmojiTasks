@@ -1,100 +1,188 @@
-const taskInput = document.getElementById("taskInput");
-const taskEmoji = document.getElementById("taskEmoji");
-const addTaskBtn = document.getElementById("addTaskBtn");
-const clearCompletedBtn = document.getElementById("clearCompletedBtn");
-const taskList = document.getElementById("taskList");
-const emptyTasks = document.getElementById("emptyTasks");
-const taskSummary = document.getElementById("taskSummary");
+const $ = (selector) => document.querySelector(selector);
+const $$ = (selector) => [...document.querySelectorAll(selector)];
 
-const totalTasksEl = document.getElementById("totalTasks");
-const completedTasksEl = document.getElementById("completedTasks");
-const activeTasksEl = document.getElementById("activeTasks");
+const taskInput = $("#taskInput");
+const taskEmoji = $("#taskEmoji");
+const taskPriority = $("#taskPriority");
+const taskDueDate = $("#taskDueDate");
+const addTaskBtn = $("#addTaskBtn");
+const clearCompletedBtn = $("#clearCompletedBtn");
+const taskList = $("#taskList");
+const emptyTasks = $("#emptyTasks");
+const noResults = $("#noResults");
+const taskSummary = $("#taskSummary");
+const taskSearch = $("#taskSearch");
+const taskSort = $("#taskSort");
+const filterButtons = $$(".filter-btn");
 
-const xpEl = document.getElementById("xp");
-const levelEl = document.getElementById("level");
-const maxXpEl = document.getElementById("maxXp");
-const progressBar = document.getElementById("progressBar");
-const progressContainer = document.querySelector(".progress-container");
-const streakEl = document.getElementById("streak");
+const totalTasksEl = $("#totalTasks");
+const completedTasksEl = $("#completedTasks");
+const activeTasksEl = $("#activeTasks");
+const overdueTasksEl = $("#overdueTasks");
+const lifetimeCompletedEl = $("#lifetimeCompleted");
 
-const chartCanvas = document.getElementById("progressChart");
-const chartFallback = document.getElementById("chartFallback");
-const toast = document.getElementById("toast");
+const xpEl = $("#xp");
+const levelEl = $("#level");
+const maxXpEl = $("#maxXp");
+const progressBar = $("#progressBar");
+const progressContainer = $(".progress-container");
+const streakEl = $("#streak");
+
+const chartCanvas = $("#progressChart");
+const chartPercent = $("#chartPercent");
+const toast = $("#toast");
 
 const XP_PER_LEVEL = 100;
 const XP_REWARD = 10;
 const MAX_TASK_LENGTH = 200;
-const STORAGE_KEYS = {
+const STORAGE_KEY = "emojiTasks.state.v2";
+const LEGACY_KEYS = {
     tasks: "emojiTasks",
     xp: "emojiXP",
     level: "emojiLevel",
     streak: "emojiStreak",
     lastTaskDate: "lastTaskDate"
 };
+const PRIORITY_ORDER = { high: 0, medium: 1, low: 2 };
+const PRIORITY_LABELS = {
+    high: "🔴 High",
+    medium: "🟡 Medium",
+    low: "🟢 Low"
+};
 
-let tasks = loadTasks();
-let xp = loadNumber(STORAGE_KEYS.xp);
-let level = Math.max(1, loadNumber(STORAGE_KEYS.level, 1));
-let streak = loadNumber(STORAGE_KEYS.streak);
-let chart = null;
+const DEFAULT_STATE = {
+    tasks: [],
+    xp: 0,
+    level: 1,
+    streak: 0,
+    lastTaskDate: null,
+    lifetimeCompleted: 0,
+    lifetimeXp: 0,
+    completionDays: {}
+};
+
+let state = loadState();
+let activeFilter = "all";
+let searchQuery = "";
 let toastTimer = null;
 
 function createId() {
-    if (typeof crypto?.randomUUID === "function") {
-        return crypto.randomUUID();
+    if (globalThis.crypto?.randomUUID) return globalThis.crypto.randomUUID();
+    if (globalThis.crypto?.getRandomValues) {
+        const bytes = new Uint32Array(2);
+        globalThis.crypto.getRandomValues(bytes);
+        return `${Date.now()}-${bytes[0].toString(36)}-${bytes[1].toString(36)}`;
     }
-
-    return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    return `${Date.now()}-${String(performance.now()).replace(".", "")}`;
 }
 
-function loadNumber(key, fallback = 0) {
+function safeLocalStorage(action, fallback = null) {
     try {
-        const value = Number(localStorage.getItem(key));
-        return Number.isFinite(value) && value >= 0 ? value : fallback;
+        return action(localStorage);
     } catch {
         return fallback;
     }
 }
 
-function loadTasks() {
-    try {
-        const stored = JSON.parse(localStorage.getItem(STORAGE_KEYS.tasks));
+function normalizeTask(task) {
+    if (!task || typeof task !== "object") return null;
+    const text = typeof task.text === "string" ? task.text.trim().slice(0, MAX_TASK_LENGTH) : "";
+    if (!text) return null;
 
-        if (!Array.isArray(stored)) return [];
+    const priority = ["low", "medium", "high"].includes(task.priority) ? task.priority : "medium";
+    const dueDate = typeof task.dueDate === "string" && /^\d{4}-\d{2}-\d{2}$/.test(task.dueDate) ? task.dueDate : "";
 
-        return stored
-            .filter((task) => task && typeof task === "object")
-            .map((task) => ({
-                id: String(task.id ?? createId()),
-                text: typeof task.text === "string" ? task.text.slice(0, MAX_TASK_LENGTH) : "",
-                emoji: typeof task.emoji === "string" ? task.emoji : "📝",
-                completed: Boolean(task.completed)
-            }))
-            .filter((task) => task.text.trim());
-    } catch {
-        return [];
-    }
+    return {
+        id: String(task.id || createId()),
+        text,
+        emoji: typeof task.emoji === "string" && task.emoji ? task.emoji : "📝",
+        priority,
+        dueDate,
+        completed: Boolean(task.completed),
+        createdAt: Number.isFinite(Number(task.createdAt)) ? Number(task.createdAt) : Date.now(),
+        completedAt: Number.isFinite(Number(task.completedAt)) ? Number(task.completedAt) : null
+    };
 }
 
-function saveData() {
-    try {
-        localStorage.setItem(STORAGE_KEYS.tasks, JSON.stringify(tasks));
-        localStorage.setItem(STORAGE_KEYS.xp, String(xp));
-        localStorage.setItem(STORAGE_KEYS.level, String(level));
-        localStorage.setItem(STORAGE_KEYS.streak, String(streak));
-    } catch {
-        showToast("⚠️ Browser storage is unavailable.");
+function loadState() {
+    const stored = safeLocalStorage((storage) => storage.getItem(STORAGE_KEY));
+
+    if (stored) {
+        try {
+            const parsed = JSON.parse(stored);
+            return normalizeState(parsed);
+        } catch {
+            // Fall through to legacy migration.
+        }
     }
+
+    return migrateLegacyState();
+}
+
+function normalizeState(value) {
+    const source = value && typeof value === "object" ? value : {};
+    const tasks = Array.isArray(source.tasks) ? source.tasks.map(normalizeTask).filter(Boolean) : [];
+    const completionDays = source.completionDays && typeof source.completionDays === "object" ? source.completionDays : {};
+
+    return {
+        ...DEFAULT_STATE,
+        tasks,
+        xp: clampInteger(source.xp, 0),
+        level: Math.max(1, clampInteger(source.level, 1)),
+        streak: clampInteger(source.streak, 0),
+        lastTaskDate: typeof source.lastTaskDate === "string" ? source.lastTaskDate : null,
+        lifetimeCompleted: Math.max(0, clampInteger(source.lifetimeCompleted, tasks.filter((task) => task.completed).length)),
+        lifetimeXp: Math.max(0, clampInteger(source.lifetimeXp, 0)),
+        completionDays: { ...completionDays }
+    };
+}
+
+function clampInteger(value, fallback) {
+    const number = Number(value);
+    return Number.isInteger(number) && number >= 0 ? number : fallback;
+}
+
+function migrateLegacyState() {
+    const tasksRaw = safeLocalStorage((storage) => storage.getItem(LEGACY_KEYS.tasks), null);
+    let legacyTasks = [];
+
+    try {
+        legacyTasks = Array.isArray(JSON.parse(tasksRaw)) ? JSON.parse(tasksRaw) : [];
+    } catch {
+        legacyTasks = [];
+    }
+
+    const migratedTasks = legacyTasks.map((task) => normalizeTask({ ...task, createdAt: Date.now() })).filter(Boolean);
+    const legacyXp = clampInteger(safeLocalStorage((storage) => storage.getItem(LEGACY_KEYS.xp), 0), 0);
+    const legacyLevel = Math.max(1, clampInteger(safeLocalStorage((storage) => storage.getItem(LEGACY_KEYS.level), 1), 1));
+    const legacyStreak = clampInteger(safeLocalStorage((storage) => storage.getItem(LEGACY_KEYS.streak), 0), 0);
+    const legacyDate = safeLocalStorage((storage) => storage.getItem(LEGACY_KEYS.lastTaskDate), null);
+
+    return normalizeState({
+        tasks: migratedTasks,
+        xp: legacyXp,
+        level: legacyLevel,
+        streak: legacyStreak,
+        lastTaskDate: legacyDate,
+        lifetimeCompleted: migratedTasks.filter((task) => task.completed).length,
+        lifetimeXp: legacyXp + Math.max(0, legacyLevel - 1) * XP_PER_LEVEL
+    });
+}
+
+function saveState() {
+    const saved = safeLocalStorage((storage) => {
+        storage.setItem(STORAGE_KEY, JSON.stringify(state));
+        return true;
+    }, false);
+
+    if (!saved) showToast("⚠️ Browser storage is unavailable. Changes may be lost on reload.");
 }
 
 function showToast(message) {
     clearTimeout(toastTimer);
     toast.textContent = message;
     toast.classList.add("show");
-
-    toastTimer = setTimeout(() => {
-        toast.classList.remove("show");
-    }, 2200);
+    toastTimer = setTimeout(() => toast.classList.remove("show"), 2400);
 }
 
 function getTodayKey() {
@@ -104,7 +192,6 @@ function getTodayKey() {
 
 function getDayDifference(fromKey, toKey) {
     if (!fromKey || !toKey) return Infinity;
-
     const from = new Date(`${fromKey}T00:00:00`);
     const to = new Date(`${toKey}T00:00:00`);
     return Math.round((to - from) / 86400000);
@@ -112,106 +199,80 @@ function getDayDifference(fromKey, toKey) {
 
 function updateStreak() {
     const today = getTodayKey();
-    const lastDate = localStorage.getItem(STORAGE_KEYS.lastTaskDate);
+    const lastDate = state.lastTaskDate;
 
-    if (lastDate === today) {
-        streakEl.textContent = streak;
-        return;
+    if (lastDate !== today) {
+        state.streak = getDayDifference(lastDate, today) === 1 ? state.streak + 1 : 1;
+        state.lastTaskDate = today;
     }
 
-    const difference = getDayDifference(lastDate, today);
-    streak = difference === 1 ? streak + 1 : 1;
-
-    try {
-        localStorage.setItem(STORAGE_KEYS.lastTaskDate, today);
-        localStorage.setItem(STORAGE_KEYS.streak, String(streak));
-    } catch {
-        // The current streak remains available in memory for this session.
-    }
-
-    streakEl.textContent = streak;
+    state.completionDays[today] = (state.completionDays[today] || 0) + 1;
+    streakEl.textContent = state.streak;
 }
 
 function updateLevel() {
-    const previousLevel = level;
+    let leveledUp = false;
 
-    while (xp >= XP_PER_LEVEL) {
-        xp -= XP_PER_LEVEL;
-        level += 1;
+    while (state.xp >= XP_PER_LEVEL) {
+        state.xp -= XP_PER_LEVEL;
+        state.level += 1;
+        leveledUp = true;
     }
 
-    if (level > previousLevel) {
-        showToast(`🎉 Level ${level} unlocked!`);
-    }
+    if (leveledUp) showToast(`🎉 Level ${state.level} unlocked!`);
 
-    xpEl.textContent = xp;
-    levelEl.textContent = level;
+    xpEl.textContent = state.xp;
+    levelEl.textContent = state.level;
     maxXpEl.textContent = XP_PER_LEVEL;
 
-    const percent = Math.min((xp / XP_PER_LEVEL) * 100, 100);
+    const percent = Math.min((state.xp / XP_PER_LEVEL) * 100, 100);
     progressBar.style.width = `${percent}%`;
     progressContainer.setAttribute("aria-valuenow", String(Math.round(percent)));
 }
 
-function updateChart() {
-    const completed = tasks.filter((task) => task.completed).length;
-    const active = tasks.length - completed;
+function getVisibleTasks() {
+    const normalizedSearch = searchQuery.toLocaleLowerCase();
+    const today = getTodayKey();
 
-    if (!window.Chart || !chartCanvas) {
-        chartFallback.hidden = false;
-        chartCanvas.hidden = true;
-        return;
-    }
+    const filtered = state.tasks.filter((task) => {
+        const matchesSearch = !normalizedSearch || task.text.toLocaleLowerCase().includes(normalizedSearch);
+        const matchesFilter = activeFilter === "all"
+            || (activeFilter === "active" && !task.completed)
+            || (activeFilter === "completed" && task.completed)
+            || (activeFilter === "high" && task.priority === "high" && !task.completed);
+        return matchesSearch && matchesFilter;
+    });
 
-    chartFallback.hidden = true;
-    chartCanvas.hidden = false;
-
-    if (!chart) {
-        chart = new Chart(chartCanvas, {
-            type: "doughnut",
-            data: {
-                labels: ["Completed", "Active"],
-                datasets: [{
-                    data: [completed, active],
-                    backgroundColor: ["#2ecc71", "#ff8c00"],
-                    borderWidth: 0
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        labels: { color: "#ffffff" }
-                    }
-                }
+    return filtered.sort((a, b) => {
+        switch (taskSort.value) {
+            case "priority":
+                return PRIORITY_ORDER[a.priority] - PRIORITY_ORDER[b.priority] || b.createdAt - a.createdAt;
+            case "deadline": {
+                const aDate = a.dueDate || "9999-12-31";
+                const bDate = b.dueDate || "9999-12-31";
+                return aDate.localeCompare(bDate) || Number(a.completed) - Number(b.completed) || b.createdAt - a.createdAt;
             }
-        });
-        return;
-    }
-
-    chart.data.datasets[0].data = [completed, active];
-    chart.update();
+            case "alphabetical":
+                return a.text.localeCompare(b.text, undefined, { sensitivity: "base" });
+            default:
+                return b.createdAt - a.createdAt;
+        }
+    });
 }
 
-function updateStats() {
-    const total = tasks.length;
-    const completed = tasks.filter((task) => task.completed).length;
-    const active = total - completed;
+function isOverdue(task) {
+    return Boolean(task.dueDate && !task.completed && task.dueDate < getTodayKey());
+}
 
-    totalTasksEl.textContent = total;
-    completedTasksEl.textContent = completed;
-    activeTasksEl.textContent = active;
-    taskSummary.textContent = total === 0
-        ? "No tasks yet."
-        : `${active} active · ${completed} completed`;
-
-    emptyTasks.hidden = total > 0;
+function formatDueDate(dateKey) {
+    if (!dateKey) return "";
+    const date = new Date(`${dateKey}T00:00:00`);
+    return new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric" }).format(date);
 }
 
 function createTaskElement(task) {
     const li = document.createElement("li");
-    li.className = task.completed ? "task completed" : "task";
+    li.className = `task ${task.completed ? "completed" : ""} priority-${task.priority}`;
 
     const left = document.createElement("div");
     left.className = "task-left";
@@ -220,7 +281,7 @@ function createTaskElement(task) {
     checkbox.type = "checkbox";
     checkbox.className = "task-checkbox";
     checkbox.checked = task.completed;
-    checkbox.setAttribute("aria-label", `Mark ${task.text} as complete`);
+    checkbox.setAttribute("aria-label", `${task.completed ? "Restore" : "Complete"} ${task.text}`);
     checkbox.addEventListener("change", () => toggleTask(task.id));
 
     const emoji = document.createElement("span");
@@ -228,14 +289,42 @@ function createTaskElement(task) {
     emoji.textContent = task.emoji;
     emoji.setAttribute("aria-hidden", "true");
 
+    const content = document.createElement("div");
+    content.className = "task-content";
+
     const text = document.createElement("span");
     text.className = "task-text";
     text.textContent = task.text;
 
-    left.append(checkbox, emoji, text);
+    const meta = document.createElement("div");
+    meta.className = "task-meta";
+
+    const priority = document.createElement("span");
+    priority.className = `priority-badge ${task.priority}`;
+    priority.textContent = PRIORITY_LABELS[task.priority];
+
+    meta.appendChild(priority);
+
+    if (task.dueDate) {
+        const due = document.createElement("span");
+        due.className = `due-badge ${isOverdue(task) ? "overdue" : ""}`;
+        due.textContent = `${isOverdue(task) ? "⚠️ Overdue" : "📅 " + formatDueDate(task.dueDate)}`;
+        meta.appendChild(due);
+    }
+
+    content.append(text, meta);
+    left.append(checkbox, emoji, content);
 
     const actions = document.createElement("div");
     actions.className = "actions";
+
+    const editButton = document.createElement("button");
+    editButton.type = "button";
+    editButton.className = "edit-btn";
+    editButton.textContent = "✏️";
+    editButton.title = "Edit task";
+    editButton.setAttribute("aria-label", `Edit ${task.text}`);
+    editButton.addEventListener("click", () => editTask(task.id));
 
     const completeButton = document.createElement("button");
     completeButton.type = "button";
@@ -250,107 +339,208 @@ function createTaskElement(task) {
     deleteButton.className = "delete-btn";
     deleteButton.textContent = "🗑";
     deleteButton.title = "Delete task";
-    deleteButton.setAttribute("aria-label", "Delete task");
+    deleteButton.setAttribute("aria-label", `Delete ${task.text}`);
     deleteButton.addEventListener("click", () => deleteTask(task.id));
 
-    actions.append(completeButton, deleteButton);
+    actions.append(editButton, completeButton, deleteButton);
     li.append(left, actions);
-
     return li;
 }
 
 function renderTasks() {
-    taskList.replaceChildren(...tasks.map(createTaskElement));
-    updateStats();
+    const visibleTasks = getVisibleTasks();
+    taskList.replaceChildren(...visibleTasks.map(createTaskElement));
+
+    const total = state.tasks.length;
+    const completed = state.tasks.filter((task) => task.completed).length;
+    const active = total - completed;
+    const overdue = state.tasks.filter(isOverdue).length;
+
+    totalTasksEl.textContent = total;
+    completedTasksEl.textContent = completed;
+    activeTasksEl.textContent = active;
+    overdueTasksEl.textContent = overdue;
+    lifetimeCompletedEl.textContent = state.lifetimeCompleted;
+
+    taskSummary.textContent = total === 0
+        ? "No tasks yet."
+        : `${active} active · ${completed} completed${overdue ? ` · ${overdue} overdue` : ""}`;
+
+    emptyTasks.hidden = total > 0;
+    noResults.hidden = total === 0 || visibleTasks.length > 0;
+    clearCompletedBtn.disabled = completed === 0;
+
     updateLevel();
     updateChart();
-    checkAchievements();
-    saveData();
+    updateAchievements();
+    saveState();
+}
+
+function drawChart() {
+    if (!chartCanvas) return;
+
+    const completed = state.tasks.filter((task) => task.completed).length;
+    const active = state.tasks.length - completed;
+    const total = completed + active;
+    const percent = total ? Math.round((completed / total) * 100) : 0;
+    chartPercent.textContent = `${percent}%`;
+
+    const context = chartCanvas.getContext("2d");
+    if (!context) return;
+
+    const ratio = window.devicePixelRatio || 1;
+    const width = chartCanvas.clientWidth || 320;
+    const height = chartCanvas.clientHeight || 280;
+    chartCanvas.width = width * ratio;
+    chartCanvas.height = height * ratio;
+    context.setTransform(ratio, 0, 0, ratio, 0, 0);
+    context.clearRect(0, 0, width, height);
+
+    const centerX = width / 2;
+    const centerY = height / 2;
+    const radius = Math.min(width, height) * 0.34;
+    const lineWidth = Math.max(18, radius * 0.25);
+    const start = -Math.PI / 2;
+    const completeAngle = total ? (completed / total) * Math.PI * 2 : 0;
+
+    context.lineWidth = lineWidth;
+    context.lineCap = "round";
+    context.strokeStyle = "rgba(255,255,255,0.08)";
+    context.beginPath();
+    context.arc(centerX, centerY, radius, 0, Math.PI * 2);
+    context.stroke();
+
+    if (total) {
+        context.strokeStyle = "#ff9d21";
+        context.beginPath();
+        context.arc(centerX, centerY, radius, start, start + completeAngle);
+        context.stroke();
+    }
+}
+
+function updateChart() {
+    drawChart();
 }
 
 function addTask() {
     const text = taskInput.value.trim();
-
     if (!text) {
         showToast("✏️ Enter a task first.");
         taskInput.focus();
         return;
     }
 
-    if (text.length > MAX_TASK_LENGTH) {
-        showToast(`Task is limited to ${MAX_TASK_LENGTH} characters.`);
-        return;
-    }
-
-    tasks.unshift({
+    state.tasks.unshift({
         id: createId(),
-        text,
+        text: text.slice(0, MAX_TASK_LENGTH),
         emoji: taskEmoji.value,
-        completed: false
+        priority: taskPriority.value,
+        dueDate: taskDueDate.value,
+        completed: false,
+        createdAt: Date.now(),
+        completedAt: null
     });
 
     taskInput.value = "";
+    taskDueDate.value = "";
+    taskPriority.value = "medium";
     showToast("✅ Task added");
-    saveData();
     renderTasks();
     taskInput.focus();
 }
 
 function toggleTask(id) {
-    const task = tasks.find((item) => item.id === id);
+    const task = state.tasks.find((item) => item.id === id);
     if (!task) return;
 
     if (!task.completed) {
-        xp += XP_REWARD;
+        task.completed = true;
+        task.completedAt = Date.now();
+        state.xp += XP_REWARD;
+        state.lifetimeXp += XP_REWARD;
+        state.lifetimeCompleted += 1;
         updateStreak();
-        showToast("🎉 Task completed +10 XP");
+        showToast("🎉 Task completed · +10 XP");
     } else {
+        task.completed = false;
+        task.completedAt = null;
         showToast("↩ Task marked active");
     }
 
-    task.completed = !task.completed;
-    saveData();
+    renderTasks();
+}
+
+function editTask(id) {
+    const task = state.tasks.find((item) => item.id === id);
+    if (!task) return;
+
+    const nextText = window.prompt("Edit task", task.text);
+    if (nextText === null) return;
+
+    const text = nextText.trim();
+    if (!text) {
+        showToast("❌ Task cannot be empty.");
+        return;
+    }
+
+    task.text = text.slice(0, MAX_TASK_LENGTH);
+    showToast("✏️ Task updated");
     renderTasks();
 }
 
 function deleteTask(id) {
-    const task = tasks.find((item) => item.id === id);
+    const task = state.tasks.find((item) => item.id === id);
     if (!task) return;
 
-    tasks = tasks.filter((item) => item.id !== id);
-    saveData();
-    renderTasks();
+    state.tasks = state.tasks.filter((item) => item.id !== id);
     showToast("🗑 Task deleted");
+    renderTasks();
 }
 
 function clearCompleted() {
-    const completedCount = tasks.filter((task) => task.completed).length;
+    const count = state.tasks.filter((task) => task.completed).length;
+    if (!count) return;
 
-    if (completedCount === 0) {
-        showToast("There are no completed tasks.");
-        return;
-    }
-
-    tasks = tasks.filter((task) => !task.completed);
-    saveData();
+    state.tasks = state.tasks.filter((task) => !task.completed);
+    showToast(`🧹 Removed ${count} completed task${count === 1 ? "" : "s"}`);
     renderTasks();
-    showToast(`🧹 Removed ${completedCount} completed task${completedCount === 1 ? "" : "s"}`);
 }
 
-function checkAchievements() {
-    const completed = tasks.filter((task) => task.completed).length;
+function updateAchievements() {
+    const unlocks = {
+        firstTask: state.lifetimeCompleted >= 1,
+        tenTasks: state.lifetimeCompleted >= 10,
+        levelFive: state.level >= 5,
+        twentyFive: state.lifetimeCompleted >= 25,
+        hundredXp: state.lifetimeXp >= 100,
+        perfectDay: Object.values(state.completionDays).some((count) => count >= 5)
+    };
 
-    document.getElementById("firstTask").classList.toggle("locked", completed < 1);
-    document.getElementById("tenTasks").classList.toggle("locked", completed < 10);
-    document.getElementById("levelFive").classList.toggle("locked", level < 5);
+    for (const [id, unlocked] of Object.entries(unlocks)) {
+        const element = document.getElementById(id);
+        element.classList.toggle("locked", !unlocked);
+        element.setAttribute("aria-label", unlocked ? "Achievement unlocked" : "Achievement locked");
+    }
+}
+
+function setFilter(filter) {
+    activeFilter = filter;
+    filterButtons.forEach((button) => button.classList.toggle("active", button.dataset.filter === filter));
+    renderTasks();
 }
 
 addTaskBtn.addEventListener("click", addTask);
 clearCompletedBtn.addEventListener("click", clearCompleted);
-
 taskInput.addEventListener("keydown", (event) => {
     if (event.key === "Enter") addTask();
 });
+taskSearch.addEventListener("input", () => {
+    searchQuery = taskSearch.value.trim();
+    renderTasks();
+});
+taskSort.addEventListener("change", renderTasks);
+filterButtons.forEach((button) => button.addEventListener("click", () => setFilter(button.dataset.filter)));
+window.addEventListener("resize", drawChart);
 
-streakEl.textContent = streak;
+streakEl.textContent = state.streak;
 renderTasks();
