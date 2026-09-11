@@ -2,6 +2,7 @@
 
 > A privacy-first gamified task manager: tasks → XP → levels → streaks → achievements.
 
+[![CI](https://github.com/Ordboybro/EmojiTasks/actions/workflows/ci.yml/badge.svg)](https://github.com/Ordboybro/EmojiTasks/actions/workflows/ci.yml)  
 **Live demo:** https://ordboybro.github.io/EmojiTasks/
 
 EmojiTasks is a static, client-side productivity app built with vanilla JavaScript. It turns a normal task list into a lightweight game while keeping the application's data in the browser.
@@ -130,6 +131,7 @@ When v2 does not find that state, it attempts to migrate the previous keys (`emo
 
 ```text
 EmojiTasks/
+├── .github/workflows/ci.yml
 ├── index.html
 ├── style.css
 ├── script.js
@@ -171,6 +173,18 @@ Repository → Settings → Pages → Deploy from a branch → main → / (root)
 Live demo:
 
 https://ordboybro.github.io/EmojiTasks/
+
+## 🧪 Automated quality
+
+Every push and pull request to `main` runs lightweight checks covering:
+
+- JavaScript syntax
+- local HTML asset references
+- safe DOM rendering (`textContent`, not `innerHTML`)
+- local-storage integration markers
+- required HTML metadata
+
+The workflow is intentionally dependency-light because EmojiTasks has no build system.
 
 ## 🔐 Security-minded implementation details
 
