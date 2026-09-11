@@ -1,0 +1,62 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: JavaScript syntax
+        run: node --check script.js
+
+      - name: Validate HTML references
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          html = Path("index.html").read_text(encoding="utf-8")
+          refs = re.findall(r'<(?:script[^>]+src|link[^>]+href)=["\']([^"\']+)', html, re.I)
+          local = []
+          for ref in refs:
+              clean = ref.split("?", 1)[0]
+              if clean.startswith(("http://", "https://", "//", "data:", "mailto:")):
+                  continue
+              local.append(clean.lstrip("/"))
+
+          missing = [ref for ref in local if not Path(ref).exists()]
+          if missing:
+              raise SystemExit(f"Missing local assets: {missing}")
+          print(f"Validated {len(local)} local asset references")
+          PY
+
+      - name: Safety and storage contract
+        run: |
+          if grep -n "innerHTML" script.js; then
+            echo "Task rendering should stay on safe DOM APIs"
+            exit 1
+          fi
+          grep -q "textContent" script.js
+          grep -q "localStorage" script.js
+          echo "DOM and persistence contract OK"
+
+      - name: HTML smoke checks
+        run: |
+          grep -qi '<title>.*EmojiTasks' index.html
+          grep -q 'meta name="viewport"' index.html
+          echo "HTML smoke checks OK"
